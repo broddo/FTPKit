@@ -484,4 +484,6 @@
  */
 - (NSString *)printWorkingDirectory;
 
+- (BOOL)cancelOperation;
+
 @end
