@@ -53,6 +53,16 @@
 - (NSArray *)parseListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles;
 
 /**
+ Parse data returned from FTP MLSD command.
+ 
+ @param data Bytes returned from server containing directory listing.
+ @param handle Parent directory handle.
+ @param showHiddenFiles Ignores hiddent files if YES. Otherwise returns all files.
+ @return List of FTPHandle objects.
+ */
+- (NSArray *)parseMListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles;
+
+/**
  Sets lastError w/ 'message' as description and error code 502.
  
  @param message Description to set to last error.
@@ -66,6 +76,16 @@
  to read the error.
  */
 - (void)returnFailure:(void (^)(NSError *error))failure;
+
+/**
+ Convenience method that extracts the last component from a string
+ */
+- (NSString *)lastComponentFromString:(NSString *)iString;
+
+/**
+ Convenience method that extracts the file type from a string
+ */
+- (NSString *)extractfileTypeFromString:(NSString *)iString;
 
 /**
  URL encode a path.
@@ -175,6 +195,45 @@
     NSArray *files = [self parseListData:data handle:handle showHiddentFiles:showHiddenFiles];
     return files; // If files == nil, method will set the lastError.
 }
+
+- (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles
+{
+    self.conn = [self connect];
+    if (self.conn == NULL)
+        return nil;
+    const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
+    NSString *tmpPath = [self temporaryUrl];
+    const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
+    int stat = FtpMlsd(output, path, self.conn);
+    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+    FtpQuit(self.conn);
+    if (stat == 0) {
+        self.lastError = [NSError FTPKitErrorWithResponse:response];
+        return nil;
+    }
+    NSError *error = nil;
+    NSData *data = [NSData dataWithContentsOfFile:tmpPath options:NSDataReadingUncached error:&error];
+    if (error) {
+        FKLogError(@"Error: %@", error.localizedDescription);
+        self.lastError = error;
+        return nil;
+    }
+    /**
+     Please note: If there are no contents in the folder OR if the folder does
+     not exist data.bytes _will_ be 0. Therefore, you can not use this method to
+     determine if a directory exists!
+     */
+    [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
+    // Log the error, but do not fail.
+    if (error) {
+        FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
+    }
+    NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
+    return files; // If files == nil, method will set the lastError.
+}
+
+
+
 
 - (void)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
@@ -567,10 +626,73 @@
     return result;
 }
 
+- (NSArray *)parseMListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles
+{
+    NSMutableArray *files = [NSMutableArray array];
+    NSString *dataAsString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    NSArray *lineArray = [dataAsString componentsSeparatedByString:@"\n"];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    
+    dateFormatter.dateFormat = @"yyyyMMddHHmmss";
+    [dateFormatter setTimeZone:[NSTimeZone timeZoneWithName:@"UTC"]];
+    
+    for (NSString *item in lineArray) {
+        if ([item length] == 0) {
+            continue;
+        }
+        
+        NSMutableDictionary *thisEntry = [[NSMutableDictionary alloc] init];
+        thisEntry[@"type"] = @"0";
+        thisEntry[@"size"] = @"";
+        thisEntry[@"modify"] = [[NSDate alloc] init];
+        thisEntry[@"name"] = [self lastComponentFromString:item];
+        
+        NSArray *attributes = [item componentsSeparatedByString:@";"];
+        
+        for (NSString *attribute in attributes) {
+            NSArray *parameter = [attribute componentsSeparatedByString:@"="];
+            if ([parameter[0] isEqualToString:@"type"]) {
+                NSString *type = [self extractfileTypeFromString:parameter[1]];
+                [thisEntry setObject:type forKey:@"type"];
+            } else if ([parameter[0] isEqualToString:@"size"]) {
+                [thisEntry setObject:parameter[1] forKey:@"size"];
+            } else if ([parameter[0] isEqualToString:@"modify"]) {
+                NSDate *date = [dateFormatter dateFromString: parameter[1]];
+                [thisEntry setObject:date forKey:@"modify"];
+            }
+        }
+        
+        FTPHandle *ftpHandle = [FTPHandle handleAtPath:handle.path mlsdAttributes:thisEntry];
+        if (! [ftpHandle.name hasPrefix:@"."] || showHiddenFiles) {
+            [files addObject:ftpHandle];
+        }
+    }
+    
+    return files;
+}
+
+- (NSString *)extractfileTypeFromString:(NSString *)iString {
+    if ([iString isEqualToString:@"file"]) {
+        return @"1";
+    } else if ([iString isEqualToString:@"dir"]) {
+        return @"2";
+    }
+    
+    // File type unknown
+    return @"0";
+}
+
+- (NSString *)lastComponentFromString:(NSString *)iString {
+    NSRange range= [iString rangeOfString: @" " options: NSBackwardsSearch];
+    return  [iString substringFromIndex: range.location+1];
+}
+
+
 - (NSArray *)parseListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles
 {
     NSMutableArray *files = [NSMutableArray array];
     NSUInteger offset = 0;
+
     do {
         CFDictionaryRef thisEntry = NULL;
         CFIndex bytes = CFFTPCreateParsedResourceListing(NULL, &((const uint8_t *) data.bytes)[offset], data.length - offset, &thisEntry);

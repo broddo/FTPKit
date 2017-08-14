@@ -87,6 +87,15 @@
 - (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles;
 
 /**
+ List directory contents at path using the MLSD command instead of LIST.
+ 
+ @param path Path to remote directory to list.
+ @param showHiddenItems Show hidden items in directory.
+ @return List of contents as FTPHandle objects.
+ */
+- (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles;
+
+/**
  Refer to listContentsAtPath:showHiddenFiles:
  
  This adds the ability to perform the operation asynchronously.
@@ -100,6 +109,7 @@
 - (void)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles
                    success:(void (^)(NSArray *contents))success
                    failure:(void (^)(NSError *error))failure;
+
 
 /**
  List directory contents at handle's location.

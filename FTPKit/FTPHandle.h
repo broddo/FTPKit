@@ -32,6 +32,15 @@ typedef enum {
 + (instancetype)handleAtPath:(NSString *)path attributes:(NSDictionary *)attributes;
 
 /**
+ Factory: Create handle from FTP MLSD input.
+ 
+ @param path Parent directory of remote resource.
+ @param attributes A dictionary containing MLSD attributes.
+ @return instancetype
+ */
++ (instancetype)handleAtPath:(NSString *)path mlsdAttributes:(NSDictionary *)attributes;
+
+/**
  Factory: Create a handle with the full path of a resource w/ no attributes.
  
  @param path Full path of remote resource.
@@ -47,6 +56,15 @@ typedef enum {
  @return instancetype
  */
 - (instancetype)initWithPath:(NSString *)path attributes:(NSDictionary *)attributes;
+
+/**
+ Create handle from MLSD attributes.
+ 
+ @param path Parent directory to remote resource.
+ @param attributes A dictionary containing MLSD attributes.
+ @return instancetype
+ */
+- (instancetype)initWithPath:(NSString *)aPath mlsdAttributes:(NSDictionary *)mAttributes;
 
 /**
  Create a handle with the full path of a resource w/ no attributes.

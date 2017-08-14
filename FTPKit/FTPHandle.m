@@ -35,6 +35,11 @@
     return [[self alloc] initWithPath:path attributes:attributes];
 }
 
++ (instancetype)handleAtPath:(NSString *)path mlsdAttributes:(NSDictionary *)attributes
+{
+    return [[self alloc] initWithPath:path mlsdAttributes:attributes];
+}
+
 + (instancetype)handleAtPath:(NSString *)path type:(FTPHandleType)type
 {
     return [[self alloc] initWithPath:path type:type];
@@ -60,6 +65,29 @@
         }
 	}
 	return self;
+}
+
+- (instancetype)initWithPath:(NSString *)aPath mlsdAttributes:(NSDictionary *)mAttributes
+{
+    self = [super init];
+    if (self) {
+        
+        self.modified = [mAttributes objectForKey:@"modify"];
+        self.group = nil;
+        self.link = nil;
+        self.mode = [[mAttributes objectForKey:@"size"] intValue];
+        self.name = [mAttributes objectForKey:@"name"];
+        self.owner = nil;
+        self.size = strtoull([[mAttributes objectForKey:@"size"] UTF8String], NULL, 10);
+        self.type = [[mAttributes objectForKey:@"type"] intValue];
+        
+        if ([aPath hasPrefix:@"/"]) {
+            self.path = [aPath stringByAppendingPathComponent:name];
+        } else {
+            self.path = [NSString stringWithFormat:@"%@/%@", aPath, name];
+        }
+    }
+    return self;
 }
 
 - (instancetype)initWithPath:(NSString *)aPath type:(FTPHandleType)aType
