@@ -40,6 +40,7 @@
 #define FTPLIB_DIR_VERBOSE 2
 #define FTPLIB_FILE_READ 3
 #define FTPLIB_FILE_WRITE 4
+#define FTPLIB_DIR_MLSD 5
 
 /* FtpAccess() mode codes */
 #define FTPLIB_ASCII 'A'
@@ -100,6 +101,7 @@ GLOBALREF int FtpRmdir(const char *path, netbuf *nControl);
 GLOBALREF int FtpPwd(char *path, int max, netbuf *nControl);
 GLOBALREF int FtpNlst(const char *output, const char *path, netbuf *nControl);
 GLOBALREF int FtpDir(const char *output, const char *path, netbuf *nControl);
+GLOBALDEF int FtpMlsd(const char *outputfile, const char *path, netbuf *nControl);
 GLOBALREF int FtpSize(const char *path, unsigned int *size, char mode, netbuf *nControl);
 #if defined(__UINT64_MAX)
 GLOBALREF int FtpSizeLong(const char *path, fsz_t *size, char mode, netbuf *nControl);

@@ -1123,6 +1123,10 @@ GLOBALDEF int FtpAccess(const char *path, int typ, int mode, netbuf *nControl,
         strcpy(buf,"STOR");
         dir = FTPLIB_WRITE;
         break;
+    case FTPLIB_DIR_MLSD:
+        strcpy(buf,"MLSD");
+        dir = FTPLIB_READ;
+        break;
       default:
         sprintf(nControl->response, "Invalid open type %d\n", typ);
         return 0;
@@ -1486,6 +1490,16 @@ GLOBALDEF int FtpNlst(const char *outputfile, const char *path,
 GLOBALDEF int FtpDir(const char *outputfile, const char *path, netbuf *nControl)
 {
     return FtpXfer(outputfile, path, nControl, FTPLIB_DIR_VERBOSE, FTPLIB_ASCII);
+}
+
+/*
+ * FtpDir - issue a MLSD command and write response to output
+ *
+ * return 1 if successful, 0 otherwise
+ */
+GLOBALDEF int FtpMlsd(const char *outputfile, const char *path, netbuf *nControl)
+{
+    return FtpXfer(outputfile, path, nControl, FTPLIB_DIR_MLSD, FTPLIB_ASCII);
 }
 
 /*
