@@ -148,27 +148,32 @@
     return (long long int)bytes;
 }
 
-- (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles
+- (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
     FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
-    return [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles];
+    return [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
 }
 
-- (void)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
+- (void)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
     FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
-    [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles success:success failure:failure];
+    [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing success:success failure:failure];
 }
 
-- (NSArray *)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles
+- (NSArray *)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
+    int stat;
     self.conn = [self connect];
     if (self.conn == NULL)
         return nil;
     const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
     NSString *tmpPath = [self temporaryUrl];
     const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpDir(output, path, self.conn);
+    if (useMachineProcessing) {
+        stat = FtpMlsd(output, path, self.conn);
+    } else {
+        stat = FtpDir(output, path, self.conn);
+    }
     NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
     FtpQuit(self.conn);
     if (stat == 0) {
@@ -192,11 +197,17 @@
     if (error) {
         FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
     }
-    NSArray *files = [self parseListData:data handle:handle showHiddentFiles:showHiddenFiles];
-    return files; // If files == nil, method will set the lastError.
+    
+    if (useMachineProcessing) {
+        NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
+        return files; // If files == nil, method will set the lastError.
+    } else {
+        NSArray *files = [self parseListData:data handle:handle showHiddentFiles:showHiddenFiles];
+        return files; // If files == nil, method will set the lastError.
+    }
 }
 
-- (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles
+- (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
     self.conn = [self connect];
     if (self.conn == NULL)
@@ -235,10 +246,10 @@
 
 
 
-- (void)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
+- (void)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
     dispatch_async(_queue, ^{
-        NSArray *contents = [self listContentsAtHandle:handle showHiddenFiles:showHiddenFiles];
+        NSArray *contents = [self listContentsAtHandle:handle showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
         if (contents && success) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 success(contents);

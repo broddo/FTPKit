@@ -82,18 +82,10 @@
  
  @param path Path to remote directory to list.
  @param showHiddenItems Show hidden items in directory.
+ @param useMachineProcessing Use the MLSD command instead of the old LIST command
  @return List of contents as FTPHandle objects.
  */
-- (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles;
-
-/**
- List directory contents at path using the MLSD command instead of LIST.
- 
- @param path Path to remote directory to list.
- @param showHiddenItems Show hidden items in directory.
- @return List of contents as FTPHandle objects.
- */
-- (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles;
+- (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing;
 
 /**
  Refer to listContentsAtPath:showHiddenFiles:
@@ -102,11 +94,13 @@
  
  @param path Path to remote directory to list.
  @param showHiddenItems Show hidden items in directory.
+ @param useMachineProcessing Use the MLSD command instead of the old LIST command
  @param success Method called when process succeeds. Provides list of contents
         as FTPHandle objects.
  @param failure Method called when process fails.
  */
 - (void)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles
+      useMachineProcessing:(BOOL)useMachineProcessing
                    success:(void (^)(NSArray *contents))success
                    failure:(void (^)(NSError *error))failure;
 
@@ -116,9 +110,12 @@
  
  @param handle Remote directory handle to list.
  @param showHiddenItems Show hidden items in directory.
+ @param useMachineProcessing Use the MLSD command instead of the old LIST command
  @return List of contents as FTPHandle objects.
  */
-- (NSArray *)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles;
+- (NSArray *)listContentsAtHandle:(FTPHandle *)handle
+                  showHiddenFiles:(BOOL)showHiddenFiles
+             useMachineProcessing:(BOOL)useMachineProcessing;
 
 /**
  Refer to listContentsAtHandle:showHiddenFiles:
@@ -126,11 +123,13 @@
  This adds the ability to perform the operation asynchronously.
  
  @param showHiddenItems Show hidden items in directory.
+ @param useMachineProcessing Use the MLSD command instead of the old LIST command
  @param success Method called when process succeeds. Provides list of contents
         as FTPHandle objects.
  @param failure Method called when process fails.
  */
 - (void)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles
+        useMachineProcessing:(BOOL)useMachineProcessing
                      success:(void (^)(NSArray *contents))success
                      failure:(void (^)(NSError *error))failure;
 
