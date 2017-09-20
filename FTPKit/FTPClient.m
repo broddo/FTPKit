@@ -694,7 +694,7 @@
 }
 
 - (NSString *)lastComponentFromString:(NSString *)iString {
-    NSRange range= [iString rangeOfString: @" " options: NSBackwardsSearch];
+    NSRange range = [iString rangeOfString: @" "];
     return  [iString substringFromIndex: range.location+1];
 }
 
