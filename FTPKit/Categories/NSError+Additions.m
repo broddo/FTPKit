@@ -120,8 +120,9 @@ NSString *const FTPErrorDomain = @"FTPKit";
     // Ex: '500 Server error'
     NSMutableArray *components = [[response componentsSeparatedByString:@" "] mutableCopy];
     NSInteger code = 500;
-    if ([components[0] isIntegerValue]) {
-        code = [components[0] integerValue];
+    
+    code = [components[0] intValue];
+    if (code > 0) {
         [components removeObjectAtIndex:0];
     }
     NSString *message = [components componentsJoinedByString:@" "];
@@ -129,5 +130,7 @@ NSString *const FTPErrorDomain = @"FTPKit";
                                                          forKey:NSLocalizedDescriptionKey];
     return [[NSError alloc] initWithDomain:FTPErrorDomain code:code userInfo:userInfo];
 }
+
+
 
 @end
