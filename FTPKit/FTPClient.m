@@ -102,145 +102,145 @@
 
 + (instancetype)clientWithCredentials:(FTPCredentials *)credentials
 {
-	return [[self alloc] initWithCredentials:credentials];
+  return [[self alloc] initWithCredentials:credentials];
 }
 
 + (instancetype)clientWithHost:(NSString *)host port:(int)port username:(NSString *)username password:(NSString *)password
 {
-	return [[self alloc] initWithHost:host port:port username:username password:password];
+  return [[self alloc] initWithHost:host port:port username:username password:password];
 }
 
 - (instancetype)initWithCredentials:(FTPCredentials *)aLocation
 {
-    self = [super init];
-	if (self) {
-		self.credentials = aLocation;
-        self.queue = dispatch_queue_create("com.upstart-illustration-llc.FTPKitQueue", DISPATCH_QUEUE_SERIAL);
-	}
-	return self;
+  self = [super init];
+  if (self) {
+    self.credentials = aLocation;
+    self.queue = dispatch_queue_create("com.upstart-illustration-llc.FTPKitQueue", DISPATCH_QUEUE_SERIAL);
+  }
+  return self;
 }
 
 - (instancetype)initWithHost:(NSString *)host port:(int)port username:(NSString *)username password:(NSString *)password
 {
-    FTPCredentials *creds = [FTPCredentials credentialsWithHost:host port:port username:username password:password];
-	return [self initWithCredentials:creds];
+  FTPCredentials *creds = [FTPCredentials credentialsWithHost:host port:port username:username password:password];
+  return [self initWithCredentials:creds];
 }
 
 - (NSString *)urlEncode:(NSString *)path
 {
-    return [path stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+  return [path stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
 }
 
 - (long long int)fileSizeAtPath:(NSString *)path
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return -1;
-    const char *cPath = [[self urlEncode:path] cStringUsingEncoding:NSUTF8StringEncoding];
-    unsigned int bytes;
-    int stat = FtpSize(cPath, &bytes, FTPLIB_BINARY, self.conn);
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        FKLogError(@"File most likely does not exist %@", path);
-        return -1;
-    }
-    FKLogDebug(@"%@ bytes %d", path, bytes);
-    return (long long int)bytes;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return -1;
+  const char *cPath = [[self urlEncode:path] cStringUsingEncoding:NSUTF8StringEncoding];
+  unsigned int bytes;
+  int stat = FtpSize(cPath, &bytes, FTPLIB_BINARY, self.conn);
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    FKLogError(@"File most likely does not exist %@", path);
+    return -1;
+  }
+  FKLogDebug(@"%@ bytes %d", path, bytes);
+  return (long long int)bytes;
 }
 
 - (NSArray *)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
-    FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
-    return [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
+  FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
+  return [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
 }
 
 - (void)listContentsAtPath:(NSString *)path showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
-    FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
-    [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing success:success failure:failure];
+  FTPHandle *hdl = [FTPHandle handleAtPath:path type:FTPHandleTypeDirectory];
+  [self listContentsAtHandle:hdl showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing success:success failure:failure];
 }
 
 - (NSArray *)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
-    int stat;
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return nil;
-    const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
-    NSString *tmpPath = [self temporaryUrl];
-    const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
-    if (useMachineProcessing) {
-        stat = FtpMlsd(output, path, self.conn);
-    } else {
-        stat = FtpDir(output, path, self.conn);
-    }
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return nil;
-    }
-    NSError *error = nil;
-    NSData *data = [NSData dataWithContentsOfFile:tmpPath options:NSDataReadingUncached error:&error];
-    if (error) {
-        FKLogError(@"Error: %@", error.localizedDescription);
-        self.lastError = error;
-        return nil;
-    }
-    /**
-     Please note: If there are no contents in the folder OR if the folder does
-     not exist data.bytes _will_ be 0. Therefore, you can not use this method to
-     determine if a directory exists!
-     */
-    [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
-    // Log the error, but do not fail.
-    if (error) {
-        FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
-    }
-    
-    if (useMachineProcessing) {
-        NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
-        return files; // If files == nil, method will set the lastError.
-    } else {
-        NSArray *files = [self parseListData:data handle:handle showHiddentFiles:showHiddenFiles];
-        return files; // If files == nil, method will set the lastError.
-    }
+  int stat;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return nil;
+  const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
+  NSString *tmpPath = [self temporaryUrl];
+  const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
+  if (useMachineProcessing) {
+    stat = FtpMlsd(output, path, self.conn);
+  } else {
+    stat = FtpDir(output, path, self.conn);
+  }
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return nil;
+  }
+  NSError *error = nil;
+  NSData *data = [NSData dataWithContentsOfFile:tmpPath options:NSDataReadingUncached error:&error];
+  if (error) {
+    FKLogError(@"Error: %@", error.localizedDescription);
+    self.lastError = error;
+    return nil;
+  }
+  /**
+   Please note: If there are no contents in the folder OR if the folder does
+   not exist data.bytes _will_ be 0. Therefore, you can not use this method to
+   determine if a directory exists!
+   */
+  [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
+  // Log the error, but do not fail.
+  if (error) {
+    FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
+  }
+  
+  if (useMachineProcessing) {
+    NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
+    return files; // If files == nil, method will set the lastError.
+  } else {
+    NSArray *files = [self parseListData:data handle:handle showHiddentFiles:showHiddenFiles];
+    return files; // If files == nil, method will set the lastError.
+  }
 }
 
 - (NSArray *)listContentsAtHandleUsingMlsd:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return nil;
-    const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
-    NSString *tmpPath = [self temporaryUrl];
-    const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpMlsd(output, path, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return nil;
-    }
-    NSError *error = nil;
-    NSData *data = [NSData dataWithContentsOfFile:tmpPath options:NSDataReadingUncached error:&error];
-    if (error) {
-        FKLogError(@"Error: %@", error.localizedDescription);
-        self.lastError = error;
-        return nil;
-    }
-    /**
-     Please note: If there are no contents in the folder OR if the folder does
-     not exist data.bytes _will_ be 0. Therefore, you can not use this method to
-     determine if a directory exists!
-     */
-    [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
-    // Log the error, but do not fail.
-    if (error) {
-        FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
-    }
-    NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
-    return files; // If files == nil, method will set the lastError.
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return nil;
+  const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
+  NSString *tmpPath = [self temporaryUrl];
+  const char *output = [tmpPath cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = FtpMlsd(output, path, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return nil;
+  }
+  NSError *error = nil;
+  NSData *data = [NSData dataWithContentsOfFile:tmpPath options:NSDataReadingUncached error:&error];
+  if (error) {
+    FKLogError(@"Error: %@", error.localizedDescription);
+    self.lastError = error;
+    return nil;
+  }
+  /**
+   Please note: If there are no contents in the folder OR if the folder does
+   not exist data.bytes _will_ be 0. Therefore, you can not use this method to
+   determine if a directory exists!
+   */
+  [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
+  // Log the error, but do not fail.
+  if (error) {
+    FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
+  }
+  NSArray *files = [self parseMListData:data handle:handle showHiddentFiles:showHiddenFiles];
+  return files; // If files == nil, method will set the lastError.
 }
 
 
@@ -248,632 +248,637 @@
 
 - (void)listContentsAtHandle:(FTPHandle *)handle showHiddenFiles:(BOOL)showHiddenFiles useMachineProcessing:(BOOL)useMachineProcessing success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        NSArray *contents = [self listContentsAtHandle:handle showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
-        if (contents && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success(contents);
-            });
-        } else if (! contents && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    NSArray *contents = [self listContentsAtHandle:handle showHiddenFiles:showHiddenFiles useMachineProcessing:useMachineProcessing];
+    if (contents && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success(contents);
+      });
+    } else if (! contents && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)downloadFile:(NSString *)remotePath to:(NSString *)localPath progress:(BOOL (^)(NSUInteger, NSUInteger))progress
 {
-    return [self downloadHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile] to:localPath progress:progress];
+  return [self downloadHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile] to:localPath progress:progress];
 }
 
 - (void)downloadFile:(NSString *)remotePath to:(NSString *)localPath progress:(BOOL (^)(NSUInteger, NSUInteger))progress success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    [self downloadHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile]  to:localPath progress:progress success:success failure:failure];
+  [self downloadHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile]  to:localPath progress:progress success:success failure:failure];
 }
 
 - (BOOL)downloadHandle:(FTPHandle *)handle to:(NSString *)localPath progress:(BOOL (^)(NSUInteger, NSUInteger))progress
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *output = [localPath cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
-    // @todo Send w/ appropriate mode. FTPLIB_ASCII | FTPLIB_BINARY
-    int stat = FtpGet(output, path, FTPLIB_BINARY, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    // @todo Use 'progress' block.
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *output = [localPath cStringUsingEncoding:NSUTF8StringEncoding];
+  const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
+  // @todo Send w/ appropriate mode. FTPLIB_ASCII | FTPLIB_BINARY
+  int stat = FtpGet(output, path, FTPLIB_BINARY, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  // @todo Use 'progress' block.
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)downloadHandle:(FTPHandle *)handle to:(NSString *)localPath progress:(BOOL (^)(NSUInteger, NSUInteger))progress success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self downloadHandle:handle to:localPath progress:progress];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self downloadHandle:handle to:localPath progress:progress];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)uploadFile:(NSString *)localPath to:(NSString *)remotePath progress:(BOOL (^)(NSUInteger, NSUInteger))progress
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *input = [localPath cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *path = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
-    // @todo Send w/ appropriate mode. FTPLIB_ASCII | FTPLIB_BINARY
-    int stat = FtpPut(input, path, FTPLIB_BINARY, self.conn);
-    // @todo Use 'progress' block.
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        // Invalid path, wrong permissions, etc. Make sure that permissions are
-        // set corectly on the path AND the path of the initialPath is correct.
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *input = [localPath cStringUsingEncoding:NSUTF8StringEncoding];
+  const char *path = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
+  // @todo Send w/ appropriate mode. FTPLIB_ASCII | FTPLIB_BINARY
+  int stat = FtpPut(input, path, FTPLIB_BINARY, self.conn);
+  // @todo Use 'progress' block.
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    // Invalid path, wrong permissions, etc. Make sure that permissions are
+    // set corectly on the path AND the path of the initialPath is correct.
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)uploadFile:(NSString *)localPath to:(NSString *)remotePath progress:(BOOL (^)(NSUInteger, NSUInteger))progress success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self uploadFile:localPath to:remotePath progress:progress];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self uploadFile:localPath to:remotePath progress:progress];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)createDirectoryAtPath:(NSString *)remotePath
 {
-    return [self createDirectoryAtHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory]];
+  return [self createDirectoryAtHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory]];
 }
 
 - (void)createDirectoryAtPath:(NSString *)remotePath success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    [self createDirectoryAtHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory] success:success failure:failure];
+  [self createDirectoryAtHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory] success:success failure:failure];
 }
 
 - (BOOL)createDirectoryAtHandle:(FTPHandle *)handle
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *path = [handle.path cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpMkdir(path, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *path = [handle.path cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = FtpMkdir(path, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)createDirectoryAtHandle:(FTPHandle *)handle success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-	dispatch_async(_queue, ^{
-        BOOL ret = [self createDirectoryAtHandle:handle];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self createDirectoryAtHandle:handle];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)deleteDirectoryAtPath:(NSString *)remotePath
 {
-    return [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory]];
+  return [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory]];
 }
 
 - (void)deleteDirectoryAtPath:(NSString *)remotePath success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory] success:success failure:failure];
+  [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeDirectory] success:success failure:failure];
 }
 
 - (BOOL)deleteFileAtPath:(NSString *)remotePath
 {
-    return [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile]];
+  return [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile]];
 }
 
 - (void)deleteFileAtPath:(NSString *)remotePath success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile] success:success failure:failure];
+  [self deleteHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeFile] success:success failure:failure];
 }
 
 - (BOOL)deleteHandle:(FTPHandle *)handle
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = 0;
-    if (handle.type == FTPHandleTypeDirectory)
-        stat = FtpRmdir(path, self.conn);
-    else
-        stat = FtpDelete(path, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *path = [[self urlEncode:handle.path] cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = 0;
+  if (handle.type == FTPHandleTypeDirectory)
+    stat = FtpRmdir(path, self.conn);
+  else
+    stat = FtpDelete(path, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)deleteHandle:(FTPHandle *)handle success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self deleteHandle:handle];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self deleteHandle:handle];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)cancelOperation {
-    if (self.conn == NULL)
-        return NO;
-    NSString *command = [NSString stringWithFormat:@"ABOR"];
-    BOOL success = [self sendCommand:command conn:self.conn];
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-
-    if (!success) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  if (self.conn == NULL)
+    return NO;
+  NSString *command = [NSString stringWithFormat:@"ABOR"];
+  BOOL success = [self sendCommand:command conn:self.conn];
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  
+  if (!success) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (BOOL)chmodPath:(NSString *)remotePath toMode:(int)mode
 {
-    return [self chmodHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeUnknown] toMode:mode];
+  return [self chmodHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeUnknown] toMode:mode];
 }
 
 - (void)chmodPath:(NSString *)remotePath toMode:(int)mode success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    [self chmodHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeUnknown] toMode:mode success:success failure:failure];
+  [self chmodHandle:[FTPHandle handleAtPath:remotePath type:FTPHandleTypeUnknown] toMode:mode success:success failure:failure];
 }
 
 - (BOOL)chmodHandle:(FTPHandle *)handle toMode:(int)mode
 {
-    if (mode < 0 || mode > 777) {
-        NSDictionary *userInfo = [NSDictionary dictionaryWithObject:NSLocalizedString(@"File mode value must be between 0 and 0777.", @"")
-                                                             forKey:NSLocalizedDescriptionKey];
-        self.lastError = [[NSError alloc] initWithDomain:FTPErrorDomain code:0 userInfo:userInfo];
-        return NO;
-    }
-    NSString *command = [NSString stringWithFormat:@"SITE CHMOD %i %@", mode, [self urlEncode:handle.path]];
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    BOOL success = [self sendCommand:command conn:self.conn];
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (! success) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  if (mode < 0 || mode > 777) {
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObject:NSLocalizedString(@"File mode value must be between 0 and 0777.", @"")
+                                                         forKey:NSLocalizedDescriptionKey];
+    self.lastError = [[NSError alloc] initWithDomain:FTPErrorDomain code:0 userInfo:userInfo];
+    return NO;
+  }
+  NSString *command = [NSString stringWithFormat:@"SITE CHMOD %i %@", mode, [self urlEncode:handle.path]];
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  BOOL success = [self sendCommand:command conn:self.conn];
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (! success) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)chmodHandle:(FTPHandle *)handle toMode:(int)mode success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self chmodHandle:handle toMode:mode];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self chmodHandle:handle toMode:mode];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)renamePath:(NSString *)sourcePath to:(NSString *)destPath
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *src = [[self urlEncode:sourcePath] cStringUsingEncoding:NSUTF8StringEncoding];
-    // @note The destination path does not need to be URL encoded. In fact, if
-    // it is, the filename will include the percent escaping!
-    const char *dst = [destPath cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpRename(src, dst, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *src = [[self urlEncode:sourcePath] cStringUsingEncoding:NSUTF8StringEncoding];
+  // @note The destination path does not need to be URL encoded. In fact, if
+  // it is, the filename will include the percent escaping!
+  const char *dst = [destPath cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = FtpRename(src, dst, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)renamePath:(NSString *)sourcePath to:(NSString *)destPath success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self renamePath:sourcePath to:destPath];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self renamePath:sourcePath to:destPath];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)copyPath:(NSString *)sourcePath to:(NSString *)destPath
 {
-    NSString *tmpPath = [self temporaryUrl];
-    BOOL success = [self downloadFile:sourcePath to:tmpPath progress:NULL];
-    if (! success)
-        return NO;
-    success = [self uploadFile:tmpPath to:destPath progress:NULL];
-    // Remove file.
-    NSError *error;
-    [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
-    // Log the error, but do not fail.
-    if (error) {
-        FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
-    }
-    if (! success)
-        return NO;
-    return YES;
+  NSString *tmpPath = [self temporaryUrl];
+  BOOL success = [self downloadFile:sourcePath to:tmpPath progress:NULL];
+  if (! success)
+    return NO;
+  success = [self uploadFile:tmpPath to:destPath progress:NULL];
+  // Remove file.
+  NSError *error;
+  [[NSFileManager defaultManager] removeItemAtPath:tmpPath error:&error];
+  // Log the error, but do not fail.
+  if (error) {
+    FKLogError(@"Failed to remove tmp file. Error: %@", error.localizedDescription);
+  }
+  if (! success)
+    return NO;
+  return YES;
 }
 
 - (void)copyPath:(NSString *)sourcePath to:(NSString *)destPath success:(void (^)(void))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL ret = [self copyPath:sourcePath to:destPath];
-        if (ret && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success();
-            });
-        } else if (! ret && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL ret = [self copyPath:sourcePath to:destPath];
+    if (ret && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success();
+      });
+    } else if (! ret && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 /** Private Methods */
 
 - (netbuf *)connect
 {
-    self.lastError = nil;
-    const char *host = [_credentials.host cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *user = [_credentials.username cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *pass = [_credentials.password cStringUsingEncoding:NSUTF8StringEncoding];
-
-    int stat = FtpConnect(host, &_conn);
-    if (stat == 0) {
-        // @fixme We don't get the exact error code from the lib. Use a generic
-        // connection error.
-        self.lastError = [NSError FTPKitErrorWithCode:10060];
-        return NULL;
-    }
-    stat = FtpLogin(user, pass, self.conn);
-    if (stat == 0) {
-        NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        FtpQuit(self.conn);
-        return NULL;
-    }
-    return self.conn;
+  self.lastError = nil;
+  const char *host = [_credentials.host cStringUsingEncoding:NSUTF8StringEncoding];
+  const char *user = [_credentials.username cStringUsingEncoding:NSUTF8StringEncoding];
+  const char *pass = [_credentials.password cStringUsingEncoding:NSUTF8StringEncoding];
+  
+  int stat = FtpConnect(host, &_conn);
+  if (stat == 0) {
+    // @fixme We don't get the exact error code from the lib. Use a generic
+    // connection error.
+    self.lastError = [NSError FTPKitErrorWithCode:10060];
+    return NULL;
+  }
+  stat = FtpLogin(user, pass, self.conn);
+  if (stat == 0) {
+    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    FtpQuit(self.conn);
+    return NULL;
+  }
+  return self.conn;
 }
 
 - (BOOL)sendCommand:(NSString *)command conn:(netbuf *)conn
 {
-    const char *cmd = [command cStringUsingEncoding:NSUTF8StringEncoding];
-    if (!FtpSendCmd(cmd, '2', conn)) {
-        NSString *response = [NSString stringWithCString:FtpLastResponse(conn) encoding:NSUTF8StringEncoding];
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  const char *cmd = [command cStringUsingEncoding:NSUTF8StringEncoding];
+  if (!FtpSendCmd(cmd, '2', conn)) {
+    NSString *response = [NSString stringWithCString:FtpLastResponse(conn) encoding:NSUTF8StringEncoding];
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (void)failedWithMessage:(NSString *)message
 {
-    self.lastError = [NSError errorWithDomain:FTPErrorDomain
-                                         code:502
-                                     userInfo:[NSDictionary dictionaryWithObject:message forKey:NSLocalizedDescriptionKey]];
+  self.lastError = [NSError errorWithDomain:FTPErrorDomain
+                                       code:502
+                                   userInfo:[NSDictionary dictionaryWithObject:message forKey:NSLocalizedDescriptionKey]];
 }
 
 - (NSString *)temporaryUrl
 {
-    // Do not use NSURL. It will not allow you to read the file contents.
-    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"FTPKit.list"];
-    //FKLogDebug(@"path: %@", path);
-    return path;
+  // Do not use NSURL. It will not allow you to read the file contents.
+  NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"FTPKit.list"];
+  //FKLogDebug(@"path: %@", path);
+  return path;
 }
 
 - (NSDictionary *)entryByReencodingNameInEntry:(NSDictionary *)entry encoding:(NSStringEncoding)newEncoding
 {
-    // Convert to the preferred encoding. By default CF encodes the string
-    // as MacRoman.
-    NSString *newName = nil;
-    NSString *name = [entry objectForKey:(id)kCFFTPResourceName];
-    if (name != nil) {
-        NSData *data = [name dataUsingEncoding:NSMacOSRomanStringEncoding];
-        if (data != nil) {
-            newName = [[NSString alloc] initWithData:data encoding:newEncoding];
-        }
+  // Convert to the preferred encoding. By default CF encodes the string
+  // as MacRoman.
+  NSString *newName = nil;
+  NSString *name = [entry objectForKey:(id)kCFFTPResourceName];
+  if (name != nil) {
+    NSData *data = [name dataUsingEncoding:NSMacOSRomanStringEncoding];
+    if (data != nil) {
+      newName = [[NSString alloc] initWithData:data encoding:newEncoding];
     }
-    
-    // If the above failed, just return the entry unmodified.  If it succeeded,
-    // make a copy of the entry and replace the name with the new name that we
-    // calculated.
-    NSDictionary *result = nil;
-    if (! newName) {
-        result = (NSDictionary *)entry;
-    } else {
-        NSMutableDictionary *newEntry = [NSMutableDictionary dictionaryWithDictionary:entry];
-        [newEntry setObject:newName forKey:(id)kCFFTPResourceName];
-        result = newEntry;
-    }
-    return result;
+  }
+  
+  // If the above failed, just return the entry unmodified.  If it succeeded,
+  // make a copy of the entry and replace the name with the new name that we
+  // calculated.
+  NSDictionary *result = nil;
+  if (! newName) {
+    result = (NSDictionary *)entry;
+  } else {
+    NSMutableDictionary *newEntry = [NSMutableDictionary dictionaryWithDictionary:entry];
+    [newEntry setObject:newName forKey:(id)kCFFTPResourceName];
+    result = newEntry;
+  }
+  return result;
 }
 
 - (NSArray *)parseMListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles
 {
-    NSMutableArray *files = [NSMutableArray array];
-    NSString *dataAsString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    NSArray *lineArray = [dataAsString componentsSeparatedByString:@"\n"];
-    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-    
-    dateFormatter.dateFormat = @"yyyyMMddHHmmss";
-    [dateFormatter setTimeZone:[NSTimeZone timeZoneWithName:@"UTC"]];
-    
-    for (NSString *item in lineArray) {
-        if ([item length] == 0) {
-            continue;
-        }
-        
-        NSMutableDictionary *thisEntry = [[NSMutableDictionary alloc] init];
-        thisEntry[@"type"] = @"0";
-        thisEntry[@"size"] = @"";
-        thisEntry[@"modify"] = [[NSDate alloc] init];
-        thisEntry[@"name"] = [self lastComponentFromString:item];
-        
-        NSArray *attributes = [item componentsSeparatedByString:@";"];
-        
-        for (NSString *attribute in attributes) {
-            NSArray *parameter = [attribute componentsSeparatedByString:@"="];
-            if ([parameter[0] isEqualToString:@"type"]) {
-                NSString *type = [self extractfileTypeFromString:parameter[1]];
-                [thisEntry setObject:type forKey:@"type"];
-            } else if ([parameter[0] isEqualToString:@"size"]) {
-                [thisEntry setObject:parameter[1] forKey:@"size"];
-            } else if ([parameter[0] isEqualToString:@"modify"]) {
-                NSDate *date = [dateFormatter dateFromString: parameter[1]];
-                [thisEntry setObject:date forKey:@"modify"];
-            }
-        }
-        
-        FTPHandle *ftpHandle = [FTPHandle handleAtPath:handle.path mlsdAttributes:thisEntry];
-        if (! [ftpHandle.name hasPrefix:@"."] || showHiddenFiles) {
-            [files addObject:ftpHandle];
-        }
+  NSMutableArray *files = [NSMutableArray array];
+  NSString *dataAsString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+  NSArray *lineArray = [dataAsString componentsSeparatedByString:@"\n"];
+  NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+  
+  dateFormatter.dateFormat = @"yyyyMMddHHmmss";
+  [dateFormatter setTimeZone:[NSTimeZone timeZoneWithName:@"UTC"]];
+  
+  for (NSString *item in lineArray) {
+    if ([item length] == 0) {
+      continue;
     }
     
-    return files;
+    NSMutableDictionary *thisEntry = [[NSMutableDictionary alloc] init];
+    thisEntry[@"type"] = @"0";
+    thisEntry[@"size"] = @"";
+    thisEntry[@"modify"] = [[NSDate alloc] init];
+    thisEntry[@"name"] = [self lastComponentFromString:item];
+    
+    NSArray *attributes = [item componentsSeparatedByString:@";"];
+    
+    for (NSString *attribute in attributes) {
+      NSArray *parameter = [attribute componentsSeparatedByString:@"="];
+      if ([parameter[0] isEqualToString:@"type"]) {
+        NSString *type = [self extractfileTypeFromString:parameter[1]];
+        [thisEntry setObject:type forKey:@"type"];
+      } else if ([parameter[0] isEqualToString:@"size"]) {
+        [thisEntry setObject:parameter[1] forKey:@"size"];
+      } else if ([parameter[0] isEqualToString:@"modify"]) {
+        NSDate *date = [dateFormatter dateFromString: parameter[1]];
+        if (date == NULL) {
+          NSDate *today = [NSDate date];
+          [thisEntry setObject:today forKey:@"modify"];
+        } else {
+          [thisEntry setObject:date forKey:@"modify"];
+        }
+      }
+    }
+    
+    FTPHandle *ftpHandle = [FTPHandle handleAtPath:handle.path mlsdAttributes:thisEntry];
+    if (! [ftpHandle.name hasPrefix:@"."] || showHiddenFiles) {
+      [files addObject:ftpHandle];
+    }
+  }
+  
+  return files;
 }
 
 - (NSString *)extractfileTypeFromString:(NSString *)iString {
-    if ([iString isEqualToString:@"file"]) {
-        return @"1";
-    } else if ([iString isEqualToString:@"dir"]) {
-        return @"2";
-    }
-    
-    // File type unknown
-    return @"0";
+  if ([iString isEqualToString:@"file"]) {
+    return @"1";
+  } else if ([iString isEqualToString:@"dir"]) {
+    return @"2";
+  }
+  
+  // File type unknown
+  return @"0";
 }
 
 - (NSString *)lastComponentFromString:(NSString *)iString {
-    NSRange range = [iString rangeOfString: @" "];
-    return  [iString substringFromIndex: range.location+1];
+  NSRange range = [iString rangeOfString: @" "];
+  return  [iString substringFromIndex: range.location+1];
 }
 
 
 - (NSArray *)parseListData:(NSData *)data handle:(FTPHandle *)handle showHiddentFiles:(BOOL)showHiddenFiles
 {
-    NSMutableArray *files = [NSMutableArray array];
-    NSUInteger offset = 0;
-
-    do {
-        CFDictionaryRef thisEntry = NULL;
-        CFIndex bytes = CFFTPCreateParsedResourceListing(NULL, &((const uint8_t *) data.bytes)[offset], data.length - offset, &thisEntry);
-        if (bytes > 0) {
-            if (thisEntry != NULL) {
-                NSDictionary *entry = [self entryByReencodingNameInEntry:(__bridge NSDictionary *)thisEntry encoding:NSUTF8StringEncoding];
-                FTPHandle *ftpHandle = [FTPHandle handleAtPath:handle.path attributes:entry];
-				if (! [ftpHandle.name hasPrefix:@"."] || showHiddenFiles) {
-					[files addObject:ftpHandle];
-				}
-            }
-            offset += bytes;
+  NSMutableArray *files = [NSMutableArray array];
+  NSUInteger offset = 0;
+  
+  do {
+    CFDictionaryRef thisEntry = NULL;
+    CFIndex bytes = CFFTPCreateParsedResourceListing(NULL, &((const uint8_t *) data.bytes)[offset], data.length - offset, &thisEntry);
+    if (bytes > 0) {
+      if (thisEntry != NULL) {
+        NSDictionary *entry = [self entryByReencodingNameInEntry:(__bridge NSDictionary *)thisEntry encoding:NSUTF8StringEncoding];
+        FTPHandle *ftpHandle = [FTPHandle handleAtPath:handle.path attributes:entry];
+        if (! [ftpHandle.name hasPrefix:@"."] || showHiddenFiles) {
+          [files addObject:ftpHandle];
         }
-        
-        if (thisEntry != NULL) {
-            CFRelease(thisEntry);
-        }
-        
-        if (bytes == 0) {
-            break;
-        } else if (bytes < 0) {
-            [self failedWithMessage:NSLocalizedString(@"Failed to parse directory listing", @"")];
-            return nil;
-        }
-    } while (YES);
-    
-    if (offset != data.length) {
-        FKLogWarn(@"Some bytes not read!");
+      }
+      offset += bytes;
     }
     
-    return files;
+    if (thisEntry != NULL) {
+      CFRelease(thisEntry);
+    }
+    
+    if (bytes == 0) {
+      break;
+    } else if (bytes < 0) {
+      [self failedWithMessage:NSLocalizedString(@"Failed to parse directory listing", @"")];
+      return nil;
+    }
+  } while (YES);
+  
+  if (offset != data.length) {
+    FKLogWarn(@"Some bytes not read!");
+  }
+  
+  return files;
 }
 
 - (NSDate *)lastModifiedAtPath:(NSString *)remotePath
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return nil;
-    const char *cPath = [[self urlEncode:remotePath] cStringUsingEncoding:NSUTF8StringEncoding];
-    char dt[kFTPKitRequestBufferSize];
-    // This is returning FALSE when attempting to create a new folder that exists... why?
-    // MDTM does not work with folders. It is meant to be used only for types
-    // of files that can be downloaded using the RETR command.
-    int stat = FtpModDate(cPath, dt, kFTPKitRequestBufferSize, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return nil;
-    }
-    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    // FTP spec: YYYYMMDDhhmmss
-    // @note dt always contains a trailing newline char.
-    formatter.dateFormat = @"yyyyMMddHHmmss\n";
-    NSString *dateString = [NSString stringWithCString:dt encoding:NSUTF8StringEncoding];
-    NSDate *date = [formatter dateFromString:dateString];
-    return date;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return nil;
+  const char *cPath = [[self urlEncode:remotePath] cStringUsingEncoding:NSUTF8StringEncoding];
+  char dt[kFTPKitRequestBufferSize];
+  // This is returning FALSE when attempting to create a new folder that exists... why?
+  // MDTM does not work with folders. It is meant to be used only for types
+  // of files that can be downloaded using the RETR command.
+  int stat = FtpModDate(cPath, dt, kFTPKitRequestBufferSize, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return nil;
+  }
+  NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+  // FTP spec: YYYYMMDDhhmmss
+  // @note dt always contains a trailing newline char.
+  formatter.dateFormat = @"yyyyMMddHHmmss\n";
+  NSString *dateString = [NSString stringWithCString:dt encoding:NSUTF8StringEncoding];
+  NSDate *date = [formatter dateFromString:dateString];
+  return date;
 }
 
 - (void)lastModifiedAtPath:(NSString *)remotePath success:(void (^)(NSDate *))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        NSDate *date = [self lastModifiedAtPath:remotePath];
-        if (! _lastError && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success(date);
-            });
-        } else if (_lastError && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    NSDate *date = [self lastModifiedAtPath:remotePath];
+    if (! _lastError && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success(date);
+      });
+    } else if (_lastError && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)directoryExistsAtPath:(NSString *)remotePath
 {
-    /**
-     Test the directory by changing to the directory. If the process succeeds
-     then the directory exists.
-     
-     The process is to get the current working directory and change _back_ to
-     the previous current working directory. There is a possibility that the
-     second changeDirectoryToPath: may fail! This is really the price we pay
-     for this command as there is no other accurate way to determine this.
-     
-     Using listContentsAtPath:showHiddenFiles: will fail as it will return empty
-     contents even if the directory doesn't exist! So long as the command
-     _succeeds_ it will return an empty list.
-     
-    // Get the current working directory. We will change back to this directory
-    // if necessary.
-    NSString *cwd = [self printWorkingDirectory];
-    // No need to continue. We already know the path exists by the fact that we
-    // are currently _in_ the directory.
-    if ([cwd isEqualToString:remotePath])
-        return YES;
-    // Test directory by changing to it.
-    BOOL success = [self changeDirectoryToPath:remotePath];
-    // Attempt to change back to the previous directory.
-    if (success)
-        [self changeDirectoryToPath:cwd];
-    return success;
-     */
-    
-    /**
-     Currently the lib creates a new connection for every command issued.
-     Therefore, it is unnecessary to change back to the original cwd.
-     */
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *cPath = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpChdir(cPath, self.conn);
-    FtpQuit(self.conn);
-    if (stat == 0)
-        return NO;
-    return YES;
+  /**
+   Test the directory by changing to the directory. If the process succeeds
+   then the directory exists.
+   
+   The process is to get the current working directory and change _back_ to
+   the previous current working directory. There is a possibility that the
+   second changeDirectoryToPath: may fail! This is really the price we pay
+   for this command as there is no other accurate way to determine this.
+   
+   Using listContentsAtPath:showHiddenFiles: will fail as it will return empty
+   contents even if the directory doesn't exist! So long as the command
+   _succeeds_ it will return an empty list.
+   
+   // Get the current working directory. We will change back to this directory
+   // if necessary.
+   NSString *cwd = [self printWorkingDirectory];
+   // No need to continue. We already know the path exists by the fact that we
+   // are currently _in_ the directory.
+   if ([cwd isEqualToString:remotePath])
+   return YES;
+   // Test directory by changing to it.
+   BOOL success = [self changeDirectoryToPath:remotePath];
+   // Attempt to change back to the previous directory.
+   if (success)
+   [self changeDirectoryToPath:cwd];
+   return success;
+   */
+  
+  /**
+   Currently the lib creates a new connection for every command issued.
+   Therefore, it is unnecessary to change back to the original cwd.
+   */
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *cPath = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = FtpChdir(cPath, self.conn);
+  FtpQuit(self.conn);
+  if (stat == 0)
+    return NO;
+  return YES;
 }
 
 - (void)directoryExistsAtPath:(NSString *)remotePath success:(void (^)(BOOL))success failure:(void (^)(NSError *))failure
 {
-    dispatch_async(_queue, ^{
-        BOOL exists = [self directoryExistsAtPath:remotePath];
-        if (! _lastError && success) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                success(exists);
-            });
-        } else if (_lastError && failure) {
-            [self returnFailure:failure];
-        }
-    });
+  dispatch_async(_queue, ^{
+    BOOL exists = [self directoryExistsAtPath:remotePath];
+    if (! _lastError && success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        success(exists);
+      });
+    } else if (_lastError && failure) {
+      [self returnFailure:failure];
+    }
+  });
 }
 
 - (BOOL)changeDirectoryToPath:(NSString *)remotePath
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return NO;
-    const char *cPath = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
-    int stat = FtpChdir(cPath, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return NO;
-    }
-    return YES;
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return NO;
+  const char *cPath = [remotePath cStringUsingEncoding:NSUTF8StringEncoding];
+  int stat = FtpChdir(cPath, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return NO;
+  }
+  return YES;
 }
 
 - (NSString *)printWorkingDirectory
 {
-    self.conn = [self connect];
-    if (self.conn == NULL)
-        return nil;
-    char cPath[kFTPKitTempBufferSize];
-    int stat = FtpPwd(cPath, kFTPKitTempBufferSize, self.conn);
-    NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
-    FtpQuit(self.conn);
-    if (stat == 0) {
-        self.lastError = [NSError FTPKitErrorWithResponse:response];
-        return nil;
-    }
-    return [NSString stringWithCString:cPath encoding:NSUTF8StringEncoding];
+  self.conn = [self connect];
+  if (self.conn == NULL)
+    return nil;
+  char cPath[kFTPKitTempBufferSize];
+  int stat = FtpPwd(cPath, kFTPKitTempBufferSize, self.conn);
+  NSString *response = [NSString stringWithCString:FtpLastResponse(self.conn) encoding:NSUTF8StringEncoding];
+  FtpQuit(self.conn);
+  if (stat == 0) {
+    self.lastError = [NSError FTPKitErrorWithResponse:response];
+    return nil;
+  }
+  return [NSString stringWithCString:cPath encoding:NSUTF8StringEncoding];
 }
 
 - (void)returnFailure:(void (^)(NSError *))failure
 {
-    NSError *error = [_lastError copy];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        failure(error);
-    });
+  NSError *error = [_lastError copy];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    failure(error);
+  });
 }
 
 @end
