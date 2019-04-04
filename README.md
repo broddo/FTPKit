@@ -1,6 +1,6 @@
 # FTPKit
 
-Version 1.3.1
+Version 1.4.0
 
 FTPKit is an Objective-C library providing facilities implementing the client
 side of the File Transfer Protocol (FTP).
@@ -12,6 +12,7 @@ the remote actions.
 ## Features
 
 - List directory contents
+- Supports MLSD command
 - Upload files
 - Download files
 - Delete remote files and folders
